@@ -715,7 +715,6 @@
 
     <script>
         const LOCAL_STORAGE_KEY = 'constructionEstimatorProjects';
-        const DEFAULT_PROJECT_FOLDER = 'My Projects';
         let lineItemCounter = 0;
         let currentProjectId = null;
         let projectsCache = [];
@@ -728,13 +727,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             projectsCache = loadProjectsFromStorage();
+            createNewProject();
             renderProjectsList();
-            if (projectsCache.length) {
-                const latestProject = [...projectsCache].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
-                loadProject(latestProject.id);
-            } else {
-                createNewProject({ autoSave: true });
-            }
             switchCalculatorTab('basicCalculator');
         });
 
@@ -769,19 +763,6 @@
             const parsed = new Date(value);
             if (Number.isNaN(parsed.getTime())) return 'Just now';
             return parsed.toLocaleString();
-        }
-
-        function getDefaultProjectName() {
-            const now = new Date();
-            const datePart = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            const timePart = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }).replace(/:/g, '');
-            return `New Project ${datePart} ${timePart}`;
-        }
-
-        function normalizeProjectFolder(value) {
-            if (!value) return DEFAULT_PROJECT_FOLDER;
-            const trimmed = value.trim();
-            return trimmed || DEFAULT_PROJECT_FOLDER;
         }
 
         function addLineItem() {
@@ -958,13 +939,11 @@
             document.getElementById('summarySection').classList.remove('hidden');
             document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
         }
-
-        function saveCurrentProject(options = {}) {
-            const { silent = false } = options;
+        function saveCurrentProject() {
             const projectName = document.getElementById('projectName').value.trim();
             if (!projectName) {
                 alert('Please enter a project name before saving.');
-                return null;
+                return;
             }
 
             const projectData = {
@@ -1007,14 +986,10 @@
             try {
                 persistProjects();
                 renderProjectsList();
-                if (!silent) {
-                    alert(successMessage);
-                }
-                return projectData;
+                alert(successMessage);
             } catch (error) {
                 console.error('Unable to save project locally:', error);
                 alert('Unable to save project locally. Please check your browser storage settings.');
-                return null;
             }
         }
 
@@ -1028,53 +1003,23 @@
             }
 
             const sortedProjects = [...projectsCache].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-            const folderMap = new Map();
-
             sortedProjects.forEach(project => {
-                const folderName = normalizeProjectFolder(project.folder);
-                if (!folderMap.has(folderName)) {
-                    folderMap.set(folderName, []);
-                }
-                folderMap.get(folderName).push(project);
-            });
+                const div = document.createElement('div');
+                div.className = 'project-item';
+                div.onclick = () => loadProject(project.id);
 
-            const folderNames = Array.from(folderMap.keys()).sort((a, b) => a.localeCompare(b));
+                const date = formatProjectDate(project.updatedAt);
+                const itemCount = project.lineItems ? project.lineItems.length : 0;
 
-            folderNames.forEach(folderName => {
-                const folderDiv = document.createElement('div');
-                folderDiv.className = 'project-folder';
+                div.innerHTML = `
+                    <div class="project-info-item">
+                        <div class="project-name">${project.name}</div>
+                        <div class="project-meta">${project.type || 'No type'} • ${itemCount} items • Updated: ${date}</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="event.stopPropagation(); deleteProject('${project.id}')">Delete</button>
+                `;
 
-                const header = document.createElement('div');
-                header.className = 'folder-header';
-                const folderProjects = folderMap.get(folderName);
-                const countLabel = folderProjects.length === 1 ? 'project' : 'projects';
-                header.innerHTML = `<span>📂 ${folderName}</span><span class="folder-count">${folderProjects.length} ${countLabel}</span>`;
-                folderDiv.appendChild(header);
-
-                const folderBody = document.createElement('div');
-                folderBody.className = 'folder-projects';
-
-                folderProjects.forEach(project => {
-                    const div = document.createElement('div');
-                    div.className = 'project-item';
-                    div.onclick = () => loadProject(project.id);
-
-                    const date = formatProjectDate(project.updatedAt);
-                    const itemCount = project.lineItems ? project.lineItems.length : 0;
-
-                    div.innerHTML = `
-                        <div class="project-info-item">
-                            <div class="project-name">${project.name}</div>
-                            <div class="project-meta">${project.type || 'No type'} • ${itemCount} items • Updated: ${date}</div>
-                        </div>
-                        <button class="btn btn-danger" onclick="event.stopPropagation(); deleteProject('${project.id}')">Delete</button>
-                    `;
-
-                    folderBody.appendChild(div);
-                });
-
-                folderDiv.appendChild(folderBody);
-                container.appendChild(folderDiv);
+                container.appendChild(div);
             });
         }
 
@@ -1088,7 +1033,6 @@
             currentProjectId = projectId;
 
             document.getElementById('projectName').value = project.name;
-            document.getElementById('projectFolder').value = normalizeProjectFolder(project.folder);
             document.getElementById('projectType').value = project.type || '';
             document.getElementById('contingency').value = project.contingency || 10;
             document.getElementById('overhead').value = project.overhead || 10;
@@ -1130,7 +1074,7 @@
             projectsCache = projectsCache.filter(project => project.id !== projectId);
             if (currentProjectId === projectId) {
                 currentProjectId = null;
-                createNewProject({ autoSave: true });
+                createNewProject();
             }
 
             try {
@@ -1249,7 +1193,6 @@
                 container.innerHTML = '';
                 lineItemCounter = 0;
                 currentProjectId = null;
-                document.getElementById('projectFolder').value = DEFAULT_PROJECT_FOLDER;
 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
