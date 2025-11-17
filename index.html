@@ -591,8 +591,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
-        // Firebase Configuration
-        const firebaseConfig = {
+        // Firebase Configuration - REPLACE WITH YOUR ACTUAL FIREBASE CONFIG
+        const firebaseConfig = {           
   apiKey: "AIzaSyD3_zQVowO0Sg5rFSGkcSU0NoI852PuPAA",
   authDomain: "construction-estimator-d2633.firebaseapp.com",
   projectId: "construction-estimator-d2633",
@@ -602,26 +602,34 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        let app, auth, db;
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            alert("Firebase configuration needed. Please add your Firebase credentials.");
+        }
         
         let currentUser = null;
         let currentProjectId = null;
         let lineItemCounter = 0;
 
         // Auth State Observer
-        auth.onAuthStateChanged((user) => {
-            document.getElementById('loadingScreen').classList.add('hidden');
-            
-            if (user) {
-                currentUser = user;
-                showMainApp();
-                loadUserProjects();
-            } else {
-                showAuthScreen();
-            }
-        });
+        if (auth) {
+            auth.onAuthStateChanged((user) => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                
+                if (user) {
+                    currentUser = user;
+                    showMainApp();
+                    loadUserProjects();
+                } else {
+                    showAuthScreen();
+                }
+            });
+        }
 
         function showAuthScreen() {
             document.getElementById('authScreen').classList.remove('hidden');
@@ -822,8 +830,8 @@
             document.getElementById('profitPercent').textContent = profPct.toFixed(1);
             document.getElementById('profitAmount').textContent = '$' + profAmt.toFixed(2);
             document.getElementById('bondPercent').textContent = bondPct.toFixed(1);
-            document.getElementById('bondAmount').textContent = '$' + bondAmt.toFixed(2);
-            document.getElementById('totalEstimate').textContent = '$' + total.toFixed(2);
+            document.getElementById('bondAmount').textContent = ' + bondAmt.toFixed(2);
+            document.getElementById('totalEstimate').textContent = ' + total.toFixed(2);
 
             document.getElementById('summarySection').classList.remove('hidden');
             document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
@@ -884,7 +892,7 @@
         }
 
         async function loadUserProjects() {
-            if (!currentUser) return;
+            if (!currentUser || !db) return;
 
             try {
                 const snapshot = await db.collection('projects')
@@ -1080,8 +1088,6 @@
                 container.innerHTML = '';
                 lineItemCounter = 0;
                 
-                let currentItemIndex = 0;
-                
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     
@@ -1128,7 +1134,6 @@
                             item.querySelector('.item-notes').value = parts[12];
                             
                             calculateLineTotal(item.querySelector('.item-quantity'));
-                            currentItemIndex++;
                         }
                     }
                 }
@@ -1166,3 +1171,5 @@
             return result;
         }
     </script>
+</body>
+</html>
