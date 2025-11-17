@@ -50,7 +50,7 @@
 
         .logo-section h1 {
             font-size: 1.5em;
-            color: #2c3e50;
+            color: #fff;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -611,7 +611,7 @@
     </div>
 
     <!-- Main App -->
-    <div id="mainApp" class="app-container hidden">
+    <div id="mainApp" class="app-container">
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
@@ -955,9 +955,10 @@
             }
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
-                await auth.signInWithPopup(provider);
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projectsCache));
             } catch (error) {
-                alert('Sign in failed: ' + error.message);
+                console.error('Unable to save projects:', error);
+                throw error;
             }
         }
 
